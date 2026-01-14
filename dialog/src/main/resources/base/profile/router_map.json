@@ -1,0 +1,9 @@
+{
+  "routerMap": [
+    {
+      "name": "NavDialog",
+      "pageSourceFile": "src/main/ets/components/DialogComponents.ets",
+      "buildFunction": "DialogPageBuilder"
+    }
+  ]
+}

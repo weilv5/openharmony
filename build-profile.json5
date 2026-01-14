@@ -1,0 +1,64 @@
+{
+  "app": {
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "C:\\Users\\Mi\\.ohos\\config\\default_openharmony_kEDzrWnmGjrRD9_pAWrSb4kRWi2wQhQJuW_uYb8Yxk4=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001B11D9E9DD16D730FF4DEA2433B76C46893A3569514623DD99A3401476B7977B1D79046D978AC1DD",
+          "profile": "C:\\Users\\Mi\\.ohos\\config\\default_openharmony_kEDzrWnmGjrRD9_pAWrSb4kRWi2wQhQJuW_uYb8Yxk4=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "C:\\Users\\Mi\\.ohos\\config\\default_openharmony_kEDzrWnmGjrRD9_pAWrSb4kRWi2wQhQJuW_uYb8Yxk4=.p12",
+          "storePassword": "0000001B497ED1FE7E8341FE7105C5770A26D811A91D8B6B2D0227CD96BE8D7502DDA157200C3F2C9CE869"
+        }
+      }
+    ],
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+        "targetSdkVersion": "6.0.0(20)",
+        "compatibleSdkVersion": "6.0.0(20)",
+        "runtimeOS": "HarmonyOS",
+        "buildOption": {
+          "strictMode": {
+            "caseSensitiveCheck": true,
+            "useNormalizedOHMUrl": true
+          }
+        }
+      }
+    ],
+    "buildModeSet": [
+      {
+        "name": "debug",
+      },
+      {
+        "name": "release"
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "entry",
+      "srcPath": "./entry",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dialog",
+      "srcPath": "./dialog"
+    },
+    {
+      "name": "base",
+      "srcPath": "./base",
+    }
+  ]
+}
