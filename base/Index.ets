@@ -1,1 +1,0 @@
-export { BaseModel } from './src/main/ets/model/BaseModel';

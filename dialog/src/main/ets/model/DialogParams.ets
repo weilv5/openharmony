@@ -1,55 +1,63 @@
 import { BaseModel } from '@my/base';
+import { DialogType } from './DialogType';
 
-export class BindSheetParams extends BaseModel {
-  title: string = '';
-  text: string = '';
-  callback?: (code: number) => void;
+interface IDialogParams {
+  title?: string;
+  content?: string;
+  confirm?: () => void;
+  cancel?: () => void;
+}
 
-  static newInstance(): BindSheetParams {
-    return new BindSheetParams();
+export abstract class DialogParams extends BaseModel {
+  readonly title?: string;
+  readonly content?: string;
+  readonly confirm?: () => void;
+  readonly cancel?: () => void;
+  type?: DialogType;
+
+  constructor(params: IDialogParams) {
+    super();
+    this.title = params.title;
+    this.content = params.content;
+    this.confirm = params.confirm;
+    this.cancel = params.cancel;
   }
 
   toJson(): string {
-    throw new Error('Method not implemented.');
+    return `The dialog title=${this.title} content=${this.content}`;
   }
 }
 
-export class CustomDialogParams extends BaseModel {
-  text: string = '';
-
-  static newInstance(): CustomDialogParams {
-    return new CustomDialogParams();
-  }
-
-  toJson(): string {
-    throw new Error('Method not implemented.');
+export class BindSheetParams extends DialogParams {
+  constructor(params: IDialogParams) {
+    super(params);
+    this.type = DialogType.BIND_SHEET;
   }
 }
 
-export class OverlayManagerParams extends BaseModel {
-  text: string = '';
-  close: () => void = () => {
-  };
-
-  static newInstance(): OverlayManagerParams {
-    return new OverlayManagerParams();
-  }
-
-  toJson(): string {
-    throw new Error('Method not implemented.');
+export class CustomDialogParams extends DialogParams {
+  constructor(params: IDialogParams) {
+    super(params);
+    this.type = DialogType.CUSTOM;
   }
 }
 
-export class NavDialogParams extends BaseModel {
-  text: string = '';
-  close: () => void = () => {
-  };
+export class OverlayManagerParams extends DialogParams {
+  useBackground: boolean;
 
-  static newInstance(): NavDialogParams {
-    return new NavDialogParams();
+  constructor(params: IDialogParams) {
+    super(params);
+    this.type = DialogType.OVERLAY;
+    this.useBackground = true;
   }
+}
 
-  toJson(): string {
-    throw new Error('Method not implemented.');
+export class NavDialogParams extends DialogParams {
+  useBackground: boolean;
+
+  constructor(params: IDialogParams) {
+    super(params);
+    this.type = DialogType.NAV;
+    this.useBackground = true;
   }
 }

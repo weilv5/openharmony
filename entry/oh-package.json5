@@ -6,7 +6,8 @@
   "author": "",
   "license": "",
   "dependencies": {
-    "@my/dialog": "file:../dialog"
+    "@my/dialog": "file:../dialog",
+    "@my/base": "file:../base"
   }
 }
 

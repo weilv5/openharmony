@@ -1,56 +1,51 @@
-import { BindSheetParams, CustomDialogParams, OverlayManagerParams, NavDialogParams } from '../model/DialogParams';
+import {
+  NavDialogParams,
+  DialogParams
+} from '../model/DialogParams';
+import { DialogUtils } from '../utils/DialogUtils';
 
 @Builder
-export function BindSheet(params: BindSheetParams) {
-  Column() {
-    Text(params.title)
-      .fontSize(20)
-      .margin({ bottom: 100 });
-    Text(params.text)
-      .fontSize(20)
-      .margin({ bottom: 100 });
-    Button('callback')
-      .onClick(() => {
-        params.callback?.(0);
-      })
-      .margin({ bottom: 100 });
-  };
-}
-
-@Builder
-export function CustomDialog(params: CustomDialogParams) {
-  Column() {
-    Text(params.text)
-      .fontSize(20)
-      .margin({ bottom: 100 });
-  }
-  .justifyContent(FlexAlign.Center)
-  .backgroundColor(Color.White)
-  .borderRadius(10)
-  .height('30%')
-  .width('80%');
-}
-
-@Builder
-export function OverlayManagerDailog(params: OverlayManagerParams) {
-  Stack({ alignContent: Alignment.Center }) {
-    Column() {
-      Text(params.text)
-        .fontSize(20)
-        .margin({ bottom: 100 });
-      Button('Close').onClick(() => {
-        params.close();
-      }).width('30%');
+export function Dialog(params: DialogParams) {
+  if (DialogUtils.useBackground(params)) {
+    Stack({ alignContent: Alignment.Center }) {
+      DialogContent(params)
     }
-    .justifyContent(FlexAlign.Center)
-    .backgroundColor(Color.White)
-    .borderRadius(10)
-    .height('30%')
-    .width('80%');
+    .onClick(() => {
+      params.cancel?.()
+    })
+    .height('100%')
+    .width('100%')
+    .backgroundColor('rgba(0,0,0,0.5)')
+  } else {
+    DialogContent(params)
   }
-  .height('100%')
-  .width('100%')
-  .backgroundColor('rgba(0,0,0,0.5)');
+}
+
+@Builder
+function DialogContent(params: DialogParams) {
+  Column({space: 30}) {
+    Text(params.title)
+      .fontSize(25)
+      .fontWeight(FontWeight.Bold)
+      .visibility(params.title ? Visibility.Visible : Visibility.None)
+    Text(params.content)
+      .fontSize(18)
+      .visibility(params.content ? Visibility.Visible : Visibility.None)
+    Flex({ direction: FlexDirection.Row, wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceEvenly }) {
+      Button('Confirm')
+        .onClick(() => {
+          params.confirm?.()
+        })
+        .visibility(params.confirm ? Visibility.Visible : Visibility.None)
+      Button('Cancel')
+        .onClick(() => {
+          params.cancel?.()
+        })
+        .visibility(params.cancel ? Visibility.Visible : Visibility.None)
+    }
+    .visibility((params.confirm || params.cancel) ? Visibility.Visible : Visibility.None)
+  }
+  .background(Color.White)
 }
 
 @Builder
@@ -60,27 +55,12 @@ export function DialogPageBuilder() {
 
 @ComponentV2
 struct DialogPage {
-  @Local data: NavDialogParams = NavDialogParams.newInstance();
+  @Local data: NavDialogParams = new NavDialogParams({});
 
   build() {
     NavDestination() {
-      Stack({ alignContent: Alignment.Center }) {
-        Column() {
-          Text(this.data.text)
-            .fontSize(20)
-            .margin({ bottom: 100 });
-          Button('Close').onClick(() => {
-            this.data.close();
-          }).width('30%');
-        }
-        .justifyContent(FlexAlign.Center)
-        .backgroundColor(Color.White)
-        .borderRadius(10)
-        .height('30%')
-        .width('80%');
-      }.height('100%').width('100%');
+      Dialog(this.data)
     }
-    .backgroundColor('rgba(0,0,0,0.5)')
     .hideTitleBar(true)
     .mode(NavDestinationMode.DIALOG)
     .onReady((context: NavDestinationContext) => {

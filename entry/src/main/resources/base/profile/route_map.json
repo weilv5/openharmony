@@ -1,0 +1,9 @@
+{
+  "routerMap": [
+    {
+      "name": "dialog/page",
+      "pageSourceFile": "src/main/ets/pages/demo/DialogDemo.ets",
+      "buildFunction": "DialogPageBuilder"
+    }
+  ]
+}

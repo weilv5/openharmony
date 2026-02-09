@@ -7,11 +7,11 @@
         "material": {
           "certpath": "C:\\Users\\Mi\\.ohos\\config\\default_openharmony_kEDzrWnmGjrRD9_pAWrSb4kRWi2wQhQJuW_uYb8Yxk4=.cer",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001B11D9E9DD16D730FF4DEA2433B76C46893A3569514623DD99A3401476B7977B1D79046D978AC1DD",
+          "keyPassword": "0000001B4D9C263716B04C62D69D0FDC4C86E5FCDFF46B0CBCBEEAE14C81DEA45181F8AF08B3C4AB44BE85",
           "profile": "C:\\Users\\Mi\\.ohos\\config\\default_openharmony_kEDzrWnmGjrRD9_pAWrSb4kRWi2wQhQJuW_uYb8Yxk4=.p7b",
           "signAlg": "SHA256withECDSA",
           "storeFile": "C:\\Users\\Mi\\.ohos\\config\\default_openharmony_kEDzrWnmGjrRD9_pAWrSb4kRWi2wQhQJuW_uYb8Yxk4=.p12",
-          "storePassword": "0000001B497ED1FE7E8341FE7105C5770A26D811A91D8B6B2D0227CD96BE8D7502DDA157200C3F2C9CE869"
+          "storePassword": "0000001B80F8899760266AE61A12FCBCFECC95C992D0D44BBF6696415AF61E98D2EAA5BB421D16909D97D9"
         }
       }
     ],
