@@ -11,6 +11,10 @@ struct Index {
           .onClick(() => {
             BaseRouter.pushPath({ name: 'dialog/page' });
           });
+        Button('CommentPage')
+          .onClick(() => {
+            BaseRouter.pushPath({ name: 'comment/page' });
+          });
       }
     }
     .height('100%')

@@ -45,7 +45,8 @@ function DialogContent(params: DialogParams) {
     }
     .visibility((params.confirm || params.cancel) ? Visibility.Visible : Visibility.None)
   }
-  .background(Color.White)
+  .borderRadius(26)
+  .backgroundColor(Color.White)
 }
 
 @Builder

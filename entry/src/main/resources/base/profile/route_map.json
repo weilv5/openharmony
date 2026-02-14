@@ -2,8 +2,13 @@
   "routerMap": [
     {
       "name": "dialog/page",
-      "pageSourceFile": "src/main/ets/pages/demo/DialogDemo.ets",
+      "pageSourceFile": "src/main/ets/pages/demos/DialogDemo.ets",
       "buildFunction": "DialogPageBuilder"
+    },
+    {
+      "name": "comment/page",
+      "pageSourceFile": "src/main/ets/pages/demos/CommentDemo.ets",
+      "buildFunction": "CommentPageBuilder"
     }
   ]
 }
