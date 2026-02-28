@@ -1,8 +1,10 @@
-import { CommentDialogBuilder } from '../components/CommentDialog';
-import { ComponentContent, promptAction } from '@kit.ArkUI';
+import { ComponentContent, promptAction, window } from '@kit.ArkUI';
+import { inputMethod } from '@kit.IMEKit';
+import { CommentDialogBuilder, CommentDialogParam } from '../components/CommentDialog';
 import { CommentCache } from '../../model/CommentCache';
 import { LengthMetrics } from '@ohos.arkui.node';
-import { CommentDialogParam } from '../../utils/ImageManager';
+import { ChosenImage } from '../../utils/ImagePickerHelper';
+import { TestDialogBuilder, TestDialogController } from '../components/TextInputTest';
 
 @Builder
 export function CommentPageBuilder() {
@@ -25,25 +27,14 @@ struct CommentPage {
   build() {
     NavDestination() {
       Column() {
-        TextArea({
-          text: this.text,
-          placeholder: 'placeholder',
-          // controller: this.controller
+        TextInput({
+          placeholder: '点一下开始评论',
+          controller: this.controller,
+          text: this.text!!
         })
-          .placeholderFont({ size: 16, weight: 400 })
-          .width('90%')
-          .height(this.areaHeight)
-          // .lineHeight(this.lineHeight)
-          .fontSize(14)
-          // .lineSpacing(LengthMetrics.px(this.lineSpacing))
-          .fontColor($r('sys.color.font_primary'))
-          .backgroundColor($r('sys.color.comp_background_list_card'))
-        // TextInput({
-        //   placeholder: '点一下开始评论'
-        // })
-        Button('点一下开始评论')
           .width('90%')
           .onClick(() => {
+            this.controller.stopEditing();
             this.openDialog();
           });
       }
@@ -54,30 +45,40 @@ struct CommentPage {
   }
 
   async openDialog() {
-    const bindSheetContent = new ComponentContent(this.getUIContext(), wrapBuilder(CommentDialogBuilder), {
+    const dialogContent = new ComponentContent(this.getUIContext(), wrapBuilder(CommentDialogBuilder), {
       currentCommentId: '1',
-      cache: CommentCache.getInstance(),
-      onPublish: (commentId: string) => {
-        CommentCache.getInstance().clear();
-        bindSheetContent.dispose();
+      limitOriginalFileSize: 20,
+      onPublish: async (text?: string, images?: ChosenImage[]) => {
+        this.text = '评论完成'
+        inputMethod.getController().stopInputSession();
+        await this.getUIContext().getPromptAction().closeCustomDialog(dialogContent);
+        dialogContent?.dispose();
       }
     } as CommentDialogParam);
+    // const dialogContent = new ComponentContent(this.getUIContext(), wrapBuilder(TestDialogBuilder));
     const options: promptAction.BaseDialogOptions = {
       alignment: DialogAlignment.Bottom,
       keyboardAvoidDistance: LengthMetrics.vp(0),
       maskTransition: TransitionEffect.OPACITY.animation({ duration: 200 }),
-      dialogTransition: TransitionEffect.move(TransitionEdge.BOTTOM).animation({ duration: 200 }),
+      dialogTransition: TransitionEffect.move(TransitionEdge.BOTTOM).animation({ duration: 200, curve: Curve.Ease }),
       onWillDismiss: (dismissDialogAction: DismissDialogAction) => {
-        // 半模态页面的交互式关闭回调函数。允许开发者注册，以获取关闭操作的类型，并决定是否关闭半模态状态
-        console.info(`bindSheet closed reason: ${dismissDialogAction.reason}`);
+        console.info(`close dialog onWillDismiss reason: ${dismissDialogAction.reason}`);
+        inputMethod.getController().stopInputSession();
         dismissDialogAction.dismiss();
+        dialogContent?.dispose();
       },
+      onDidDisappear: (() => {
+        console.info(`close dialog onDidDisappear`);
+      }),
+      onWillDisappear: (() => {
+        console.info(`close dialog onWillDisappear`);
+      })
     };
     try {
-      await this.getUIContext().getPromptAction().openCustomDialog(bindSheetContent, options);
-      console.info('openBindSheet success');
+      await this.getUIContext().getPromptAction().openCustomDialog(dialogContent, options);
+      console.info('open dialog success');
     } catch (err) {
-      console.error(`openBindSheet error: ${err.code} ${err.message}`);
+      console.error(`open dialog error: ${err.code} ${err.message}`);
     }
   }
 }

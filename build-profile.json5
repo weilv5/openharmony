@@ -7,11 +7,11 @@
         "material": {
           "certpath": "C:\\Users\\Mi\\.ohos\\config\\default_openharmony_kEDzrWnmGjrRD9_pAWrSb4kRWi2wQhQJuW_uYb8Yxk4=.cer",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001B4D9C263716B04C62D69D0FDC4C86E5FCDFF46B0CBCBEEAE14C81DEA45181F8AF08B3C4AB44BE85",
+          "keyPassword": "000000176F01482E0BEFB5344B96C17D1C7F8E89DFC20E7DB293A3394E9836721D1FBD85080AE8",
           "profile": "C:\\Users\\Mi\\.ohos\\config\\default_openharmony_kEDzrWnmGjrRD9_pAWrSb4kRWi2wQhQJuW_uYb8Yxk4=.p7b",
           "signAlg": "SHA256withECDSA",
           "storeFile": "C:\\Users\\Mi\\.ohos\\config\\default_openharmony_kEDzrWnmGjrRD9_pAWrSb4kRWi2wQhQJuW_uYb8Yxk4=.p12",
-          "storePassword": "0000001B80F8899760266AE61A12FCBCFECC95C992D0D44BBF6696415AF61E98D2EAA5BB421D16909D97D9"
+          "storePassword": "00000017CE96216259299B35D384DDF30C440C4DDEB6E8D28CE574D6F1DAE8C0A06517F4F74BFD"
         }
       }
     ],
@@ -20,7 +20,7 @@
         "name": "default",
         "signingConfig": "default",
         "targetSdkVersion": "6.0.0(20)",
-        "compatibleSdkVersion": "6.0.0(20)",
+        "compatibleSdkVersion": "5.0.5(17)",
         "runtimeOS": "HarmonyOS",
         "buildOption": {
           "strictMode": {

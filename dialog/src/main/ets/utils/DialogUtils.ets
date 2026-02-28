@@ -1,4 +1,4 @@
-import { ComponentContent } from '@kit.ArkUI';
+import { ComponentContent, LevelMode } from '@kit.ArkUI';
 import { BaseRouter } from '@my/base';
 import { Dialog } from '../components/DialogComponents';
 import { BindSheetParams, CustomDialogParams, OverlayManagerParams, NavDialogParams,
@@ -75,7 +75,14 @@ export class DialogUtils {
     });
     const customDialogContent = new ComponentContent(uiContext, wrapBuilder(Dialog), customDialogParams);
     try {
-      await uiContext.getPromptAction().openCustomDialog(customDialogContent);
+      await uiContext.getPromptAction().openCustomDialog(customDialogContent, {
+        alignment: DialogAlignment.Top,
+        // maskColor: Color.Transparent,
+        isModal: false,
+        focusable: false,
+        levelMode: LevelMode.EMBEDDED,
+        keyboardAvoidMode: KeyboardAvoidMode.NONE,
+      });
       console.info('customDialog success');
     } catch (err) {
       console.error(`customDialog error: ${err.code} ${err.message}`);

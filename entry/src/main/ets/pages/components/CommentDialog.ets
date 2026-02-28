@@ -1,66 +1,65 @@
 import { CommentCache } from '../../model/CommentCache';
-import { photoAccessHelper } from '@kit.MediaLibraryKit';
-import { CommentDialogParam, ImageManager } from '../../utils/ImageManager';
-import { LengthMetricsUnit, MeasureUtils } from '@kit.ArkUI';
+import { ChosenImage, ImagePickerHelper } from '../../utils/ImagePickerHelper';
+
+export interface CommentDialogParam {
+  currentCommentId: string;
+  limitOriginalFileSize?: number;
+  onPublish?: (text?: string, images?: ChosenImage[]) => void;
+}
 
 @Builder
 export function CommentDialogBuilder(commentDialogParam: CommentDialogParam) {
-  CommentDialog({ commentDialogParam });
+  CommentDialog({
+    currentCommentId: commentDialogParam.currentCommentId,
+    limitOriginalFileSize: commentDialogParam.limitOriginalFileSize,
+    onPublishCallback: commentDialogParam.onPublish
+  });
 }
 
 @ComponentV2
 struct CommentDialog {
-  @Require @Param commentDialogParam: CommentDialogParam;
-  @Local text?: string = this.commentDialogParam.cache?.getText(this.commentDialogParam.currentCommentId);
-  @Local imageUri?: string = this.commentDialogParam.cache?.getImageUri(this.commentDialogParam.currentCommentId);
-  private photoSelectOptions?: photoAccessHelper.PhotoSelectOptions;
-  private photoPicker?: photoAccessHelper.PhotoViewPicker;
+  private readonly TEXT_AREA_PADDING: number = 8;
+  private readonly TEXT_AREA_MAX_LINES: number = 5;
+  private readonly TEXT_AREA_MIN_HEIGHT: number = 72 + this.TEXT_AREA_PADDING * 2;
+  private readonly MAX_IMAGE_COUNT: number = 1;
+  private imagePickerHelper?: ImagePickerHelper;
   private textAreaController: TextAreaController = new TextAreaController();
 
-  @Local textAreaHeight: number = 72
+  @Require @Param currentCommentId: string;
+  @Require @Param limitOriginalFileSize?: number;
+  @Require @Param onPublishCallback: (text?: string, images?: ChosenImage[]) => void;
 
-  aboutToAppear(): void {
-    this.photoSelectOptions = new photoAccessHelper.PhotoSelectOptions();
-    this.photoPicker = new photoAccessHelper.PhotoViewPicker();
-    this.photoSelectOptions.MIMEType = photoAccessHelper.PhotoViewMIMETypes.IMAGE_TYPE;
-    this.photoSelectOptions.maxSelectNumber = 1;
-  }
+  @Local text?: string = CommentCache.getInstance().getText(this.currentCommentId);
+  @Local selectedImage?: ChosenImage = CommentCache.getInstance().getImage(this.currentCommentId);
+  @Local textAreaHeight: number = this.TEXT_AREA_MIN_HEIGHT;
 
   @Computed
-  get canPublish() {
-    return this.text || this.imageUri;
+  get sendButtonEnable() {
+    return this.text || this.selectedImage;
   }
 
-  @Monitor('text', 'imageUri')
-  onStrChange(monitor: IMonitor) {
-    monitor.dirty.forEach((path: string) => {
-      console.log(`monitor ${path} value: ${monitor.value<string>(path)?.now}, id: ${this.commentDialogParam.currentCommentId}`);
-      if (path === 'text') {
-        CommentCache.getInstance().setText(this.commentDialogParam.currentCommentId, monitor.value<string>(path)?.now!);
-      }
-      if (path === 'imageUri') {
-        CommentCache.getInstance()
-          .setImageUri(this.commentDialogParam.currentCommentId, monitor.value<string>(path)?.now!);
-      }
-    });
+  aboutToAppear(): void {
+    this.imagePickerHelper = new ImagePickerHelper(this.MAX_IMAGE_COUNT, this.limitOriginalFileSize);
   }
 
-  selectImage() {
-    try {
-      this.photoPicker?.select(this.photoSelectOptions)
-        .then((photoSelectResult: photoAccessHelper.PhotoSelectResult) => {
-          console.info(`PhotoViewPicker.select successfully, photoSelectResult uri: ${JSON.stringify(photoSelectResult)}`);
-          if (photoSelectResult.photoUris.length) {
-            this.imageUri = photoSelectResult.photoUris[0];
-          }
-        })
-        .catch((err: BusinessError<void>) => {
-          console.error(`PhotoViewPicker.select failed with err: ${err.code}, ${err.message}`);
-        });
-    } catch (error) {
-      let err: BusinessError<void> = error as BusinessError<void>;
-      console.error(`PhotoViewPicker failed with err: ${err.code}, ${err.message}`);
+  private computeTextAreaHeight() {
+    // 计算textarea高度，内容超过最大行数可以进行滚动
+    const textHeight = this.getUIContext().px2vp(this.textAreaController.getTextContentRect().height);
+    // 当前内容高度
+    const curHeight = textHeight + this.TEXT_AREA_PADDING * 2;
+    // 当前内容行数
+    const curLines = this.textAreaController.getTextContentLineCount();
+    if (curLines === 0 || curHeight < this.TEXT_AREA_MIN_HEIGHT) {
+      this.textAreaHeight = this.TEXT_AREA_MIN_HEIGHT;
+      return;
     }
+    // 最大行数对应的高度
+    const maxHeight = textHeight / curLines * this.TEXT_AREA_MAX_LINES + this.TEXT_AREA_PADDING * 2;
+    if (Math.floor(curHeight) >= Math.floor(maxHeight)) {
+      this.textAreaHeight = maxHeight;
+      return;
+    }
+    this.textAreaHeight = curHeight;
   }
 
   build() {
@@ -72,83 +71,19 @@ struct CommentDialog {
       this.CommentImage();
     }
     .alignItems(HorizontalAlign.Start)
-    .borderRadius({
-      topLeft: 20,
-      topRight: 20
-    })
-    .backgroundColor('#F5F5F5')
-    .padding(12);
+    .borderRadius({ topLeft: 12, topRight: 12 })
+    .backgroundColor(Color.White)
+    .padding(16)
+    .onDisAppear(() => {
+      // CommentCache save
+      CommentCache.getInstance().save(this.currentCommentId, this.text, this.selectedImage);
+    });
   }
 
   @Builder
-  CommentTextArea() {
-    Stack() {
-      TextArea({
-        placeholder: '写下你的评论',
-        text: this.text!!,
-        controller: this.textAreaController
-      })
-        .id('commentTextArea')
-        .onAppear(() => {
-          focusControl.requestFocus('commentTextArea');
-        })
-        .onChange(() => {
-          const curTextHeight = this.getUIContext().px2vp(Number(this.textAreaController.getTextContentRect().height))
-          const curHeight = curTextHeight + 16;
-          const curLines = this.textAreaController.getTextContentLineCount();
-          if (curLines === 0 || curHeight < 72) {
-            this.textAreaHeight = 72;
-            return
-          }
-          const textAreaMaxHeight = curTextHeight / curLines * 5 + 16
-          console.log(`height ${curHeight} ${curLines} ${textAreaMaxHeight}`)
-          if (Math.floor(curHeight) >= Math.floor(textAreaMaxHeight)) {
-            this.textAreaHeight = textAreaMaxHeight;
-            return
-          }
-          this.textAreaHeight = curHeight;
-        })
-        .fontWeight(1)
-        .fontSize(14)
-        .fontColor('#333333')
-        .placeholderColor('#999999')
-        .placeholderFont({
-          size: 14,
-          weight: 1
-        })
-        .minLines(1)
-        // .maxLines(5)
-        // .height('auto')
-        .height(this.textAreaHeight)
-        .barState(BarState.Off)
-        .padding({
-          left: 8,
-          top: 8,
-          bottom: 8,
-          right: 40
-        })
-        // .constraintSize({ minHeight: 72 });
-      Image($r('app.media.image'))
-        .width(24)
-        .height(24)
-        .position({
-          bottom: 8,
-          right: 8
-        })
-        .onClick(async () => {
-          if (this.imageUri) {
-            this.getUIContext().getPromptAction().showToast({message: '最多只能上传1张图哦'})
-            return
-          }
-          this.selectImage();
-        });
-    }
-  }
-
-  @Builder
-  CommentButton() {
+  private CommentButton() {
     Button('发送')
-      .width(60)
+      .width(60 + 8 * 2)
       .height(36)
       .margin({ left: 12 })
       .padding(8)
@@ -156,21 +91,21 @@ struct CommentDialog {
       .fontSize(14)
       .borderRadius(20)
       .backgroundColor(Color.Black)
-      .opacity(this.canPublish ? 1 : 0.1)
+      .opacity(this.sendButtonEnable ? 1 : 0.1)
       .onClick(() => {
-        if (!this.canPublish) {
+        if (!this.sendButtonEnable) {
           return;
         }
         console.log(`send comment`);
-        this.commentDialogParam.onPublish?.(this.commentDialogParam.currentCommentId);
+        this.onPublishCallback(this.text?.trim(), this.selectedImage ? Array(this.selectedImage) : undefined);
       });
   }
 
   @Builder
-  CommentImage() {
-    if (this.imageUri) {
-      Stack() {
-        Image(this.imageUri)
+  private CommentImage() {
+    Stack() {
+      if (this.selectedImage?.path) {
+        Image(this.selectedImage?.path)
           .width(60)
           .height(60)
           .borderRadius(8)
@@ -178,16 +113,70 @@ struct CommentDialog {
         Image($r('app.media.cancel'))
           .width(24)
           .height(24)
-          .position({
-            top: -10,
-            right: -10
-          })
+          .position({ top: -10, right: -10 })
           .onClick(() => {
-            this.imageUri = undefined;
+            this.selectedImage = undefined;
           });
       }
-      .padding({ top: 12 })
     }
+    .padding({ top: 12 });
+  }
+
+
+  @Builder
+  private CommentTextArea() {
+    Stack() {
+      TextArea({
+        placeholder: '写下你的评论',
+        text: this.text,
+        controller: this.textAreaController
+      })
+        .id('commentTextArea')
+        .onAppear(() => {
+          focusControl.requestFocus('commentTextArea');
+        })
+        .onChange((value: string) => {
+          this.text = value;
+          this.computeTextAreaHeight();
+        })
+        .fontWeight(1)
+        .fontSize(14)
+        .fontColor('#333333')
+        .placeholderColor('#999999')
+        .placeholderFont({ size: 14, weight: 1 })
+        .height(this.textAreaHeight)
+        .barState(BarState.Off)
+        .padding({
+          left: this.TEXT_AREA_PADDING,
+          top: this.TEXT_AREA_PADDING,
+          bottom: this.TEXT_AREA_PADDING,
+          right: this.TEXT_AREA_PADDING * 2 + 24
+        });
+      Image($r('app.media.image'))
+        .width(24)
+        .height(24)
+        .position({ bottom: this.TEXT_AREA_PADDING, right: this.TEXT_AREA_PADDING })
+        .onClick(async () => {
+          if (!this.imagePickerHelper) {
+            this.getUIContext().getPromptAction().showToast({ message: '图片选择器未初始化' });
+            return;
+          }
+          if (this.selectedImage) {
+            this.getUIContext().getPromptAction().showToast({ message: '最多只能上传1张图哦' });
+            return;
+          }
+          await this.imagePickerHelper.openImagePicker({
+            onResult: (chosenImage?: ChosenImage) => {
+              this.selectedImage = chosenImage;
+            },
+            onError: (message: string) => {
+              this.getUIContext().getPromptAction().showToast({ message: message });
+            },
+            onSizeLimitExceeded: (message: string) => {
+              this.getUIContext().getPromptAction().showToast({ message: message });
+            }
+          });
+        });
+    };
   }
 }
-
