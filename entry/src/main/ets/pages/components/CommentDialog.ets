@@ -1,5 +1,7 @@
 import { CommentCache } from '../../model/CommentCache';
 import { ChosenImage, ImagePickerHelper } from '../../utils/ImagePickerHelper';
+import { ComponentContent, promptAction } from '@kit.ArkUI';
+import { ToastBaseBuilder, ToastParam } from './ToastBuilder';
 
 export interface CommentDialogParam {
   currentCommentId: string;
@@ -20,7 +22,7 @@ export function CommentDialogBuilder(commentDialogParam: CommentDialogParam) {
 struct CommentDialog {
   private readonly TEXT_AREA_PADDING: number = 8;
   private readonly TEXT_AREA_MAX_LINES: number = 5;
-  private readonly TEXT_AREA_MIN_HEIGHT: number = 72 + this.TEXT_AREA_PADDING * 2;
+  private readonly TEXT_AREA_MIN_HEIGHT: number = 72;
   private readonly MAX_IMAGE_COUNT: number = 1;
   private imagePickerHelper?: ImagePickerHelper;
   private textAreaController: TextAreaController = new TextAreaController();
@@ -83,10 +85,10 @@ struct CommentDialog {
   @Builder
   private CommentButton() {
     Button('发送')
-      .width(60 + 8 * 2)
+      .width(80)
       .height(36)
-      .margin({ left: 12 })
-      .padding(8)
+      .margin({ left: 20 })
+      .padding({left: 16, right: 16})
       .fontColor(Color.White)
       .fontSize(14)
       .borderRadius(20)
@@ -132,6 +134,7 @@ struct CommentDialog {
         controller: this.textAreaController
       })
         .id('commentTextArea')
+        .defaultFocus(true)
         .onAppear(() => {
           focusControl.requestFocus('commentTextArea');
         })
@@ -158,11 +161,11 @@ struct CommentDialog {
         .position({ bottom: this.TEXT_AREA_PADDING, right: this.TEXT_AREA_PADDING })
         .onClick(async () => {
           if (!this.imagePickerHelper) {
-            this.getUIContext().getPromptAction().showToast({ message: '图片选择器未初始化' });
+            this.showToast('图片选择器未初始化');
             return;
           }
           if (this.selectedImage) {
-            this.getUIContext().getPromptAction().showToast({ message: '最多只能上传1张图哦' });
+            this.showToast('最多只能上传1张图哦');
             return;
           }
           await this.imagePickerHelper.openImagePicker({
@@ -170,13 +173,56 @@ struct CommentDialog {
               this.selectedImage = chosenImage;
             },
             onError: (message: string) => {
-              this.getUIContext().getPromptAction().showToast({ message: message });
+              this.showToast(message);
             },
             onSizeLimitExceeded: (message: string) => {
-              this.getUIContext().getPromptAction().showToast({ message: message });
+              this.showToast(message);
             }
           });
         });
     };
+  }
+
+  showToast(message: ResourceStr, params: ToastParam = {} as ToastParam) {
+    params.message = message;
+    // params.iconBorderRadius = 6;
+    const contentNode = new ComponentContent<ToastParam>(
+      this.getUIContext(),
+      wrapBuilder<[ToastParam]>(ToastBaseBuilder),
+      params
+    );
+
+    const targetAlignment: DialogAlignment = DialogAlignment.Bottom;
+
+    const options: promptAction.BaseDialogOptions = {
+      alignment: targetAlignment,
+      maskColor: Color.Transparent,
+      autoCancel: params.cancelable !== false,
+      isModal: false,
+      focusable: false,
+      // levelMode: LevelMode.EMBEDDED,
+      onWillDismiss: (dismissDialogAction: DismissDialogAction) => {
+        if (dismissDialogAction.reason === DismissReason.PRESS_BACK) {
+          params.onBackPressed?.();
+        }
+        if (params.cancelable === false) {
+          return;
+        }
+        dismissDialogAction.dismiss();
+      },
+    };
+
+    const promptActionObj = this.getUIContext().getPromptAction();
+    promptActionObj.openCustomDialog(contentNode, options)
+      .then(() => {
+        console.log('dialog open')
+        setTimeout(() => {
+          const result = focusControl.requestFocus('commentTextArea');
+          console.log(`${result}`)
+        }, 500)
+        setTimeout(() => {
+          this.getUIContext().getPromptAction().closeCustomDialog(contentNode);
+        }, 4000);
+      })
   }
 }

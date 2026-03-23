@@ -7,7 +7,8 @@
   "license": "",
   "dependencies": {
     "@my/dialog": "file:../dialog",
-    "@my/base": "file:../base"
+    "@my/base": "file:../base",
+    "@tencent/libpag": "4.5.39"
   }
 }
 

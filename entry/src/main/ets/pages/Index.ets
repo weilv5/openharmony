@@ -15,6 +15,10 @@ struct Index {
           .onClick(() => {
             BaseRouter.pushPath({ name: 'comment/page' });
           });
+        Button('PAG动画演示')
+          .onClick(() => {
+            BaseRouter.pushPath({ name: 'pag/page' });
+          })
       }
     }
     .height('100%')

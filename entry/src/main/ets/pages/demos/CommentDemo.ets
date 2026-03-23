@@ -1,10 +1,8 @@
-import { ComponentContent, promptAction, window } from '@kit.ArkUI';
 import { inputMethod } from '@kit.IMEKit';
 import { CommentDialogBuilder, CommentDialogParam } from '../components/CommentDialog';
-import { CommentCache } from '../../model/CommentCache';
-import { LengthMetrics } from '@ohos.arkui.node';
+import { ComponentContent, LengthMetrics } from '@ohos.arkui.node';
 import { ChosenImage } from '../../utils/ImagePickerHelper';
-import { TestDialogBuilder, TestDialogController } from '../components/TextInputTest';
+import { promptAction } from '@kit.ArkUI';
 
 @Builder
 export function CommentPageBuilder() {
