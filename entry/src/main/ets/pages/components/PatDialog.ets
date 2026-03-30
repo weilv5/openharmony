@@ -123,6 +123,8 @@ struct PetDialog {
         confirmText: this.petDialogInfo.buttons[1],
       });
     }
+    .backgroundImage(this.type === PetDialogType.VIEW ? $r('app.media.pet_loading_bg') : undefined)
+    .backgroundImageSize({ width: '100%', height: '100%'})
     .width('100%')
     .backgroundColor('#242424');
   }
@@ -147,7 +149,13 @@ struct PetDialog {
       PetImageView({
         images: this.petDialogInfo.createdImages,
         imageInfo: this.petDialogInfo.imageInfo,
-        indicatorController: this.indicatorController
+        indicatorController: this.indicatorController,
+        onDisplayChange: (index: number) => {
+          // this.currentIndex = index;
+        },
+        onSelectChange: (index: number) => {
+          // this.selectedIndex = index;
+        }
       });
     }
     if (this.type === PetDialogType.VIEW_LOADING) {
@@ -308,15 +316,15 @@ struct PetAIImage {
   @Builder
   PetImageLoading() {
     Stack() {
-      Image($r('app.media.pet_loading_bg'))
-        .width(240)
-        .height(240)
-        .borderRadius(10)
-        .backgroundColor('#242424');
+      // Image($r('app.media.pet_loading_bg'))
+      //   .width(240)
+      //   .height(240)
+      //   .borderRadius(10)
+      //   .backgroundColor('#242424');
       // .margin({ top: 4, right: 4, left: 4 });
       LoadingProgress()
-        .width(20)
-        .height(20)
+        .width(24)
+        .height(24)
         .color(Color.White);
     }
     .width(240)
@@ -362,54 +370,175 @@ struct PetAIImage {
 
 @ComponentV2
 struct PetImageSwiper {
+  // 轮播整体可视区域宽度。
+  private static readonly SWIPER_WIDTH: number = 654;
+  // 轮播整体可视区域高度。
+  private static readonly SWIPER_HEIGHT: number = 240;
+  // 左右两侧露出区域边距。
+  private static readonly SWIPER_SIDE_MARGIN: number = 192;
+  // 卡片与卡片之间的间距。
+  private static readonly SWIPER_ITEM_SPACE: number = 15;
+  // Swiper 自身切页动画时长。
+  private static readonly SWIPER_ANIMATION_DURATION: number = 200;
+  // 选中卡片的最大缩放值。
+  private static readonly MAX_SCALE: number = 1;
+  // 未选中卡片的最小缩放值。
+  private static readonly MIN_SCALE: number = 0.8;
+  // 选中卡片的最大透明度。
+  private static readonly MAX_OPACITY: number = 1;
+  // 未选中卡片的最小透明度。
+  private static readonly MIN_OPACITY: number = 0.4;
+  // 中心附近的缓冲区，避免松手进入自动收敛时 scale/opacity 立刻明显跳变。
+  private static readonly CENTER_DEAD_ZONE: number = 0.08;
+
   @Param @Require indicatorController: IndicatorComponentController;
   @Param @Require images: ResourceStr[];
-  @Param onChange?: (index: number) => void = undefined;
+  // 展示索引变化回调，用于页码、说明文案等 UI 展示。
+  @Param onDisplayChange?: (index: number) => void = undefined;
+  // 业务选中索引变化回调，用于最终选图提交。
+  @Param onSelectChange?: (index: number) => void = undefined;
+  // Swiper 最终落位后的真实索引。
   @Local swiperIndex: number = 0;
+  // 提前用于展示的索引，会在动画开始时更新。
+  @Local displayIndex: number = 0;
+  // 每一张图当前的缩放值列表，由自定义转场实时驱动。
+  @Local scaleList: number[] = [];
+  // 每一张图当前的透明度列表，由自定义转场实时驱动。
+  @Local opacityList: number[] = [];
 
-  @Monitor('swiperIndex')
-  onIndexChange(monitor: IMonitor) {
-    const change = monitor.value<number>('swiperIndex');
-    if (change) {
-      this.onChange?.(change.now);
+  aboutToAppear(): void {
+    // 首次出现时，先按当前 swiperIndex 初始化每一张图的默认视觉状态。
+    this.ensureTransitionState();
+  }
+
+  @Monitor('images')
+  onImagesChange(): void {
+    // 图片列表变化时，重新按当前 swiperIndex 初始化视觉状态，避免数组长度不一致。
+    this.ensureTransitionState();
+  }
+
+  private ensureTransitionState(): void {
+    // 重新构造缩放列表，确保每张图都有默认值。
+    const scaleList: number[] = [];
+    // 重新构造透明度列表，确保每张图都有默认值。
+    const opacityList: number[] = [];
+    // 遍历全部图片，按“当前页/非当前页”生成基础视觉状态。
+    for (let i = 0; i < this.images.length; i++) {
+      // 当前选中页为最大缩放，其余页为缩小态。
+      scaleList.push(i === this.swiperIndex ? PetImageSwiper.MAX_SCALE : PetImageSwiper.MIN_SCALE);
+      // 当前选中页为最大透明度，其余页为半透明态。
+      opacityList.push(i === this.swiperIndex ? PetImageSwiper.MAX_OPACITY : PetImageSwiper.MIN_OPACITY);
     }
+    // 一次性替换缩放数组，触发界面刷新。
+    this.scaleList = scaleList;
+    // 一次性替换透明度数组，触发界面刷新。
+    this.opacityList = opacityList;
   }
 
-  getImageScale(index: number): number {
-    return this.swiperIndex === index ? 1 : 0.8;
+  /**
+   * 计算平滑后的距离系数。
+   *
+   * 目的：
+   * - 保留最终的 1 -> 0.8、1 -> 0.4 视觉目标
+   * - 但让中心附近的变化更钝一些，减轻手离开屏幕后进入自动收敛时的闪动感
+   *
+   * @param position 当前 item 相对中心的位置。
+   * @returns 0~1 的平滑距离系数。
+   */
+  private resolveSmoothDistance(position: number): number {
+    const rawDistance = Math.min(1, Math.abs(position));
+    if (rawDistance <= PetImageSwiper.CENTER_DEAD_ZONE) {
+      return 0;
+    }
+    const normalizedDistance =
+      (rawDistance - PetImageSwiper.CENTER_DEAD_ZONE) / (1 - PetImageSwiper.CENTER_DEAD_ZONE);
+    // smoothstep：在 0 和 1 两端都更平滑，减少松手时的突兀变化。
+    return normalizedDistance * normalizedDistance * (3 - 2 * normalizedDistance);
   }
 
-  getImageOpacity(index: number): number {
-    return this.swiperIndex === index ? 1 : 0.4;
+  /**
+   * 监听轮播下标变化并向外同步。
+   *
+   * @param monitor ArkUI 监听器。
+   * @returns 无返回值。
+   */
+  @Monitor('displayIndex')
+  onDisplayIndexChange(monitor: IMonitor) {
+    // 从监视器中读取 displayIndex 的新旧值。
+    const change = monitor.value<number>('displayIndex');
+    if (change) {
+      // 把展示索引回传给外层，用于页码、说明文案等 UI 提前更新。
+      this.onDisplayChange?.(change.now);
+    }
   }
 
   build() {
     Swiper() {
       ForEach(this.images, (item: string, index: number) => {
         PetAIImage({ uri: item })
-          .scale({ x: this.getImageScale(index), y: this.getImageScale(index) })
-          .opacity(this.getImageOpacity(index))
-          .animation({
-            duration: 400,
-            curve: Curve.Linear
-          });
+          .scale({
+            x: this.scaleList[index] ?? PetImageSwiper.MIN_SCALE,
+            y: this.scaleList[index] ?? PetImageSwiper.MIN_SCALE
+          })
+          .opacity(this.opacityList[index] ?? PetImageSwiper.MIN_OPACITY)
+          // .animation({
+          //   duration: 400,
+          //   curve: Curve.Linear
+          // });
       });
     }
-    .width(654)
-    .height(240)
+    // 设置轮播整体宽度。
+    .width(PetImageSwiper.SWIPER_WIDTH)
+    // 设置轮播整体高度。
+    .height(PetImageSwiper.SWIPER_HEIGHT)
+    // 预缓存前后页，降低切页时的资源抖动。
     .cachedCount(2)
+    // 每次只选中展示一页，左右通过 margin 露出侧边内容。
+    .displayCount(1)
+    // 使用受控索引，保证轮播最终停留页和本地状态一致。
     .index(this.swiperIndex)
+    // 不自动轮播。
     .autoPlay(false)
+    // 不循环。
     .loop(false)
+    // 设置 Swiper 自身的切页动画时长。
+    .duration(PetImageSwiper.SWIPER_ANIMATION_DURATION)
+    // 不允许点击指示器直接切页。
     .indicatorInteractive(false)
-    .itemSpace(15)
-    .prevMargin(192)
-    .nextMargin(192)
+    // 设置卡片之间的间距。
+    .itemSpace(PetImageSwiper.SWIPER_ITEM_SPACE)
+    // 设置前一页露出的边距。
+    .prevMargin(PetImageSwiper.SWIPER_SIDE_MARGIN)
+    // 设置后一页露出的边距。
+    .nextMargin(PetImageSwiper.SWIPER_SIDE_MARGIN)
+    // 挂载外部指示器控制器。
     .indicator(this.indicatorController)
-    .onAnimationStart((index: number, targetIndex: number, extraInfo: SwiperAnimationEvent) => {
+    // 自定义内容转场，在滑动过程中实时计算每张图的缩放和透明度。
+    .customContentTransition({
+      transition: (proxy: SwiperContentTransitionProxy) => {
+        // 当前位置离中心越远，distance 越接近 1。
+        // 这里先做一层中心缓冲和平滑处理，降低松手瞬间的视觉跳变。
+        const distance = this.resolveSmoothDistance(proxy.position);
+        // 根据平滑后的距离系数，插值计算缩放值。
+        this.scaleList[proxy.index] = PetImageSwiper.MAX_SCALE -
+          (PetImageSwiper.MAX_SCALE - PetImageSwiper.MIN_SCALE) * distance;
+        // 透明度和缩放共用同一套平滑距离，避免两套视觉节奏不一致。
+        this.opacityList[proxy.index] = PetImageSwiper.MAX_OPACITY -
+          (PetImageSwiper.MAX_OPACITY - PetImageSwiper.MIN_OPACITY) * distance;
+      }
+    })
+    // 动画开始时，先把展示索引切到目标页，让页码和说明文案提前变化。
+    .onAnimationStart((_index: number, targetIndex: number) => {
+      this.displayIndex = targetIndex;
+    })
+    // 动画最终落位后，再同步真实选中页。
+    .onChange((targetIndex: number) => {
+      // 更新 Swiper 最终停留页索引。
       this.swiperIndex = targetIndex;
-      console.info('index: ' + index);
-      console.info('targetIndex: ' + targetIndex);
+      // 让展示索引也和最终停留页保持一致。
+      this.displayIndex = targetIndex;
+      // 把最终选中页回传给外层，用于发送到车等业务提交。
+      this.onSelectChange?.(targetIndex);
     });
   }
 }
@@ -541,6 +670,8 @@ struct PetImageView {
   @Require @Param images: ResourceStr[];
   @Require @Param imageInfo?: IPetImageInfo;
   @Param @Require indicatorController: IndicatorComponentController;
+  @Param onDisplayChange?: (index: number) => void = undefined;
+  @Param onSelectChange?: (index: number) => void = undefined;
   @Local swiperIndex: number = 0;
 
   @Computed
@@ -556,8 +687,12 @@ struct PetImageView {
             PetImageSwiper({
               indicatorController: this.indicatorController,
               images: this.images,
-              onChange: (index: number) => {
+              onDisplayChange: (index: number) => {
                 this.swiperIndex = index;
+                this.onDisplayChange?.(index);
+              },
+              onSelectChange: (index: number) => {
+                this.onSelectChange?.(index);
               }
             });
             PetImageInfo({

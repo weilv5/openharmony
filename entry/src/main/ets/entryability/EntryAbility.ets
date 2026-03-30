@@ -10,6 +10,7 @@ export default class EntryAbility extends UIAbility {
     try {
       this.context.getApplicationContext().setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET);
       PetUtils.init(this.context);
+      console.log(`onCreate ${JSON.stringify(want)}`)
       PetUtils.handle(want);
     } catch (err) {
       hilog.error(DOMAIN, 'testTag', 'Failed to set colorMode. Cause: %{public}s', JSON.stringify(err));
@@ -18,6 +19,7 @@ export default class EntryAbility extends UIAbility {
   }
 
   onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
+    console.log(`onNewWant ${JSON.stringify(want)}`)
     PetUtils.handle(want);
   }
 
